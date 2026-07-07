@@ -18,7 +18,18 @@ RUN apt-get update \
         tini \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash --uid 1000 reasonix
+RUN existing_user="$(getent passwd 1000 | cut -d: -f1 || true)" \
+    && if [ -n "${existing_user}" ]; then \
+        existing_group="$(id -gn "${existing_user}")" \
+        && if [ "${existing_group}" != "reasonix" ]; then groupmod --new-name reasonix "${existing_group}"; fi \
+        && if [ "${existing_user}" != "reasonix" ]; then \
+            usermod --login reasonix --home /home/reasonix --move-home "${existing_user}"; \
+        else \
+            usermod --home /home/reasonix --move-home reasonix; \
+        fi; \
+    else \
+        useradd --create-home --shell /bin/bash --uid 1000 reasonix; \
+    fi
 
 RUN npm install -g "reasonix@${REASONIX_VERSION}" \
     && npm cache clean --force
