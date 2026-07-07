@@ -17,8 +17,9 @@
 ## 镜像内容
 
 - 基础镜像：`node:24-bookworm-slim`
-- 系统工具：`tini`、`bash`、`curl`、`git`、`python3`、`ripgrep`、`procps`
+- 系统工具：`tini`、`bash`、`curl`、`git`、`jq`、`python3`、`ripgrep`、`procps`
 - `Reasonix`：通过 `npm install -g reasonix` 安装固定版本
+- `lark-cli`：通过 `npm install -g @larksuite/cli` 安装固定版本
 
 默认镜像标签：
 
@@ -31,6 +32,7 @@
 ```bash
 docker build -t reasonix:local .
 docker run --rm -it reasonix:local reasonix version
+docker run --rm -it reasonix:local lark-cli version
 ```
 
 ## 运行示例
@@ -49,7 +51,9 @@ docker run --rm \
 
 - `main` 分支 push：构建并推送 `:main`
 - 手工触发：构建并推送 `:main`
-- 每周定时重建：吸收基础镜像和 Debian 安全更新
+- 每 6 小时轮询一次上游 `Reasonix` GitHub Releases 与 `@larksuite/cli` npm 版本
+- 上游版本变化时：自动更新 `Dockerfile` 里的版本号并 push 到 `main`
+- 每天定时重建一次：吸收基础镜像和 Debian 安全更新
 - Git tag：额外推送同名版本 tag
 
 现网部署文件请放在私有运维仓库或目标节点的 `/opt/stacks/<app>/` 目录，不要放回这里。

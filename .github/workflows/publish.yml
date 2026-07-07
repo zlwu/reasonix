@@ -8,7 +8,7 @@ on:
       - "v*"
   workflow_dispatch:
   schedule:
-    - cron: "17 3 * * 1"
+    - cron: "17 3 * * *"
 
 env:
   REGISTRY: ghcr.io
@@ -23,6 +23,14 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v6
+
+      - name: Extract pinned versions
+        id: versions
+        run: |
+          reasonix_version="$(sed -n 's/^ARG REASONIX_VERSION=//p' Dockerfile)"
+          lark_cli_version="$(sed -n 's/^ARG LARK_CLI_VERSION=//p' Dockerfile)"
+          echo "reasonix_version=${reasonix_version}" >> "$GITHUB_OUTPUT"
+          echo "lark_cli_version=${lark_cli_version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -39,6 +47,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.versions.outputs.reasonix_version }}
+            io.reasonix.version=${{ steps.versions.outputs.reasonix_version }}
+            io.larksuite.cli.version=${{ steps.versions.outputs.lark_cli_version }}
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,format=short,prefix=sha-

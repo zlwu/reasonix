@@ -1,6 +1,7 @@
 FROM node:24-bookworm-slim
 
 ARG REASONIX_VERSION=1.17.6
+ARG LARK_CLI_VERSION=1.0.66
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HOME=/home/reasonix
@@ -12,6 +13,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         git \
+        jq \
         procps \
         python3 \
         ripgrep \
@@ -31,7 +33,9 @@ RUN existing_user="$(getent passwd 1000 | cut -d: -f1 || true)" \
         useradd --create-home --shell /bin/bash --uid 1000 reasonix; \
     fi
 
-RUN npm install -g "reasonix@${REASONIX_VERSION}" \
+RUN npm install -g \
+        "reasonix@${REASONIX_VERSION}" \
+        "@larksuite/cli@${LARK_CLI_VERSION}" \
     && npm cache clean --force
 
 USER reasonix
