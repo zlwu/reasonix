@@ -24,11 +24,31 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v6
 
-      - name: Extract pinned versions
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Resolve latest upstream versions
         id: versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          reasonix_version="$(sed -n 's/^ARG REASONIX_VERSION=//p' Dockerfile)"
-          lark_cli_version="$(sed -n 's/^ARG LARK_CLI_VERSION=//p' Dockerfile)"
+          reasonix_version="$(
+            curl -fsSL \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              https://api.github.com/repos/esengine/DeepSeek-Reasonix/releases \
+            | node -e '
+                const releases = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const cli = releases.find((release) => /^v\d+\.\d+\.\d+/.test(release.tag_name));
+                if (!cli) {
+                  process.exit(1);
+                }
+                process.stdout.write(cli.tag_name.replace(/^v/, ""));
+              '
+          )"
+          lark_cli_version="$(npm view @larksuite/cli version)"
           echo "reasonix_version=${reasonix_version}" >> "$GITHUB_OUTPUT"
           echo "lark_cli_version=${lark_cli_version}" >> "$GITHUB_OUTPUT"
 
@@ -61,5 +81,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            REASONIX_VERSION=${{ steps.versions.outputs.reasonix_version }}
+            LARK_CLI_VERSION=${{ steps.versions.outputs.lark_cli_version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

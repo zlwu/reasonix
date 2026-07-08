@@ -18,6 +18,7 @@ RUN apt-get update \
         python3 \
         ripgrep \
         tini \
+        vim-nox \
     && rm -rf /var/lib/apt/lists/*
 
 RUN existing_user="$(getent passwd 1000 | cut -d: -f1 || true)" \
