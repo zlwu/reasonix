@@ -38,13 +38,15 @@ RUN existing_user="$(getent passwd 1000 | cut -d: -f1 || true)" \
         useradd --create-home --shell /bin/bash --uid 1000 reasonix; \
     fi
 
-RUN npm install -g \
+RUN mkdir -p /home/reasonix/workspace \
+    && chown -R reasonix:reasonix /home/reasonix \
+    && npm install -g \
         "reasonix@${REASONIX_VERSION}" \
         "@larksuite/cli@${LARK_CLI_VERSION}" \
     && npm cache clean --force
 
 USER reasonix
-WORKDIR /workspace
+WORKDIR /home/reasonix/workspace
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["reasonix", "help"]
