@@ -14,6 +14,7 @@ RUN apt-get update \
         curl \
         git \
         jq \
+        openssh-client \
         procps \
         python3 \
         ripgrep \
