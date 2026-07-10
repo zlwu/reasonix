@@ -16,10 +16,10 @@
 
 ## 镜像内容
 
-- 基础镜像：`node:24-bookworm-slim`
+- 基础镜像：`node:24-bookworm-slim@sha256:...`（tag 保持可读，digest 保证构建可复现）
 - 系统工具：`tini`、`bash`、`curl`、`git`、`jq`、`python3`、`ripgrep`、`procps`、`vim-nox`
-- `Reasonix`：通过 `npm install -g reasonix` 安装，CI 构建时自动解析上游最新 CLI release 版本
-- `lark-cli`：通过 `npm install -g @larksuite/cli` 安装，CI 构建时自动解析 npm 最新版本
+- `Reasonix`：通过 `npm install -g reasonix` 安装，CI 跟踪上游最新 CLI release 版本
+- `lark-cli`：通过 `npm install -g @larksuite/cli` 安装，CI 跟踪 npm 最新版本
 
 默认镜像标签：
 
@@ -51,8 +51,8 @@ docker run --rm \
 
 - `main` 分支 push：构建并推送 `:main`
 - 手工触发：构建并推送 `:main`
-- 每次构建都会实时解析最新 `Reasonix` GitHub Releases 与 `@larksuite/cli` npm 版本，并作为 build args 注入镜像
-- 每天定时重建一次：即使上游版本没变，也会重建一次，用于吸收基础镜像和 Debian 安全更新
+- `push main` 和手工触发会按 Dockerfile 中的版本清单构建镜像
+- `sync-upstream.yml` 每天检查 `Reasonix`、`@larksuite/cli` 和基础镜像 manifest digest；任一变化时，先更新 Dockerfile 并提交，再构建并推送镜像
 - Git tag：额外推送同名版本 tag
 
 现网部署文件请放在私有运维仓库或目标节点的 `/opt/stacks/<app>/` 目录，不要放回这里。

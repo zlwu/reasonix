@@ -1,0 +1,88 @@
+name: Sync upstream image components
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+      ref: ${{ steps.update.outputs.ref }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Resolve and commit changed component versions
+        id: update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          reasonix_version="$(
+            curl -fsSL \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              https://api.github.com/repos/esengine/DeepSeek-Reasonix/releases \
+            | node -e '
+                const releases = JSON.parse(require("fs").readFileSync(0, "utf8"));
+                const cli = releases.find((release) => /^v\d+\.\d+\.\d+/.test(release.tag_name));
+                if (!cli) process.exit(1);
+                process.stdout.write(cli.tag_name.replace(/^v/, ""));
+              '
+          )"
+          lark_cli_version="$(npm view @larksuite/cli version)"
+          docker_token="$(
+            curl -fsSL 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/node:pull' \
+            | node -e 'const data = JSON.parse(require("fs").readFileSync(0, "utf8")); process.stdout.write(data.token);'
+          )"
+          base_image_digest="$(
+            curl -fsSI \
+              -H "Authorization: Bearer ${docker_token}" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+              https://registry-1.docker.io/v2/library/node/manifests/24-bookworm-slim \
+            | tr -d '\r' \
+            | awk -F': 'tolower($1) == "docker-content-digest" {print $2}'
+          )"
+          test -n "${base_image_digest}"
+          REASONIX_VERSION="${reasonix_version}" \
+          LARK_CLI_VERSION="${lark_cli_version}" \
+          BASE_IMAGE_DIGEST="${base_image_digest}" \
+          node -e '
+            const fs = require("fs");
+            let dockerfile = fs.readFileSync("Dockerfile", "utf8");
+            dockerfile = dockerfile.replace(/^FROM node:24-bookworm-slim(?:@sha256:[a-f0-9]+)?$/m, `FROM node:24-bookworm-slim@${process.env.BASE_IMAGE_DIGEST}`);
+            dockerfile = dockerfile.replace(/^ARG REASONIX_VERSION=.*/m, `ARG REASONIX_VERSION=${process.env.REASONIX_VERSION}`);
+            dockerfile = dockerfile.replace(/^ARG LARK_CLI_VERSION=.*/m, `ARG LARK_CLI_VERSION=${process.env.LARK_CLI_VERSION}`);
+            fs.writeFileSync("Dockerfile", dockerfile);
+          '
+          if git diff --quiet -- Dockerfile; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Dockerfile
+          git commit -m "chore: sync upstream image components"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      ref: ${{ needs.sync.outputs.ref }}
+    secrets: inherit
