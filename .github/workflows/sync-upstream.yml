@@ -98,7 +98,7 @@ jobs:
     needs:
       - sync
       - publish
-    if: needs.sync.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    if: always() && needs.sync.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       packages: write
