@@ -53,6 +53,7 @@ docker run --rm \
 - 手工触发：构建并推送 `:main`
 - `push main` 和手工触发会按 Dockerfile 中的版本清单构建镜像
 - `sync-upstream.yml` 每天检查 `Reasonix`、`@larksuite/cli` 和基础镜像 manifest digest；任一变化时，先更新 Dockerfile 并提交，再构建并推送镜像
+- 同步 workflow 每日清理 GHCR 中超过 `30` 天且不带 `main` 标签的旧镜像版本
 - Git tag：额外推送同名版本 tag
 
 现网部署文件请放在私有运维仓库或目标节点的 `/opt/stacks/<app>/` 目录，不要放回这里。

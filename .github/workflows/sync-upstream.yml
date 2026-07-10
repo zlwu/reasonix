@@ -93,3 +93,34 @@ jobs:
     with:
       ref: ${{ needs.sync.outputs.ref }}
     secrets: inherit
+
+  cleanup:
+    needs:
+      - sync
+      - publish
+    if: needs.sync.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete expired GHCR image versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RETENTION_DAYS: "30"
+        run: |
+          cutoff_epoch="$(date -u -d "${RETENTION_DAYS} days ago" +%s)"
+          gh api --paginate \
+            "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/reasonix/versions?per_page=100" \
+            > /tmp/package-versions.json
+          jq -sr --argjson cutoff_epoch "${cutoff_epoch}" '
+            add[]
+            | select((.updated_at | fromdateiso8601) < $cutoff_epoch)
+            | select((((.metadata.container.tags // []) | index("main")) | not))
+            | .id
+          ' /tmp/package-versions.json \
+          | while read -r version_id; do
+              [ -n "${version_id}" ] || continue
+              echo "Deleting expired package version ${version_id}"
+              gh api --method DELETE \
+                "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/reasonix/versions/${version_id}"
+            done
