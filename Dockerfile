@@ -1,7 +1,7 @@
-FROM node:24-bookworm-slim@sha256:ccd0612136f105d59d7266585b0bff88016e3da94c8ebfc8ad1154b529f59e7b
+FROM node:24-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
 
 ARG REASONIX_VERSION=1.31.4
-ARG LARK_CLI_VERSION=1.0.89
+ARG LARK_CLI_VERSION=1.0.90
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HOME=/home/reasonix
